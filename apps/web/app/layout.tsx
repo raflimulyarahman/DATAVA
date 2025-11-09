@@ -2,16 +2,9 @@ import '@mysten/dapp-kit/dist/index.css';
 import '@radix-ui/themes/styles.css';
 import '@suiware/kit/main.css';
 import type { Metadata } from 'next';
-import './styles/globals.css';
+import '../styles/globals.css';
 import clsx from 'clsx';
-import ThemeProvider from '../src/providers/ThemeProvider';
-import { getThemeSettings } from '../src/helpers/theme';
-import SuiProvider from '@suiware/kit/SuiProvider';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Toaster } from 'react-hot-toast';
-
-const themeSettings = getThemeSettings();
-const queryClient = new QueryClient();
+import ClientProviders from './providers';
 
 export const metadata: Metadata = {
   title: 'DATAVA - Decentralized AI Data Marketplace',
@@ -26,19 +19,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={clsx('min-h-screen bg-black')}>
-        <QueryClientProvider client={queryClient}>
-          <ThemeProvider>
-            <SuiProvider
-              defaultNetwork="testnet"
-              walletAutoConnect={false}
-              walletStashedName="DATAVA"
-              themeSettings={themeSettings}
-            >
-              {children}
-              <Toaster position="bottom-right" />
-            </SuiProvider>
-          </ThemeProvider>
-        </QueryClientProvider>
+        <ClientProviders>{children}</ClientProviders>
       </body>
     </html>
   );
