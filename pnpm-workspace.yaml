@@ -1,3 +1,10 @@
 packages:
-  - 'packages/*'
+  - apps/*
+  - packages/*
+  - services/*
   - '!**/test/**'
+
+onlyBuiltDependencies:
+  - '@swc/core'
+  - esbuild
+  - sharp

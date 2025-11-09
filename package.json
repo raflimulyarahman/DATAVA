@@ -14,16 +14,16 @@
     "init:template:greeting-next": "rm -rf ./packages/backend-counter && rm -rf ./packages/frontend && rm -rf ./packages/frontend-counter-react && mv -f ./packages/frontend-greeting-next ./packages/frontend",
     "init:template:counter-react": "rm -rf ./packages/backend && rm -rf ./packages/frontend && rm -rf ./packages/frontend-greeting-next && mv -f ./packages/frontend-counter-react ./packages/frontend && mv -f ./packages/backend-counter ./packages/backend",
     
-    "frontend:dev": "pnpm --filter frontend dev",
-    "frontend:build": "pnpm --filter frontend build",
-    "frontend:lint": "pnpm --filter frontend lint",
-    "frontend:preview": "pnpm --filter frontend preview",
-    "frontend:format": "pnpm --filter frontend format",
-    "frontend:deploy:firebase:init": "pnpm --filter frontend deploy:firebase:init",
-    "frontend:deploy:firebase": "pnpm --filter frontend deploy:firebase",
-    "frontend:deploy:walrus:testnet": "pnpm --filter frontend deploy:walrus:testnet",
-    "frontend:deploy:walrus:mainnet": "pnpm --filter frontend deploy:walrus:mainnet",
-    "frontend:deploy:arweave": "pnpm --filter frontend deploy:arweave",
+    "frontend:dev": "pnpm --filter web dev",
+    "frontend:build": "pnpm --filter web build",
+    "frontend:lint": "pnpm --filter web lint",
+    "frontend:preview": "pnpm --filter web preview",
+    "frontend:format": "pnpm --filter web format",
+    "frontend:deploy:firebase:init": "pnpm --filter web deploy:firebase:init",
+    "frontend:deploy:firebase": "pnpm --filter web deploy:firebase",
+    "frontend:deploy:walrus:testnet": "pnpm --filter web deploy:walrus:testnet",
+    "frontend:deploy:walrus:mainnet": "pnpm --filter web deploy:walrus:mainnet",
+    "frontend:deploy:arweave": "pnpm --filter web deploy:arweave",
     
     "backend:build": "pnpm --filter backend build",
     "backend:test": "pnpm --filter backend test",
@@ -86,6 +86,7 @@
   "license": "MIT",
   "workspaces": [
     "packages/*",
+    "apps/*",
     "!**/test/**"
   ],
   "repository": {

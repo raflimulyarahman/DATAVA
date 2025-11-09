@@ -1,0 +1,22 @@
+{
+  "name": "inference-service",
+  "version": "1.0.0",
+  "description": "DATAVA Inference Service - Handles AI model requests via OpenAI API",
+  "main": "index.js",
+  "scripts": {
+    "dev": "tsx watch index.ts",
+    "start": "tsx index.ts",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "express": "^4.21.1",
+    "axios": "^1.7.7",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/cors": "^2.8.17",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3"
+  }
+}
