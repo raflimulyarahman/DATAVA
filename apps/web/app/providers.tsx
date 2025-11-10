@@ -2,10 +2,10 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
-import { 
-  SuiClientProvider, 
+import {
+  SuiClientProvider,
   WalletProvider,
-  createNetworkConfig 
+  createNetworkConfig
 } from '@mysten/dapp-kit';
 import { getFullnodeUrl } from '@mysten/sui/client';
 import ThemeProvider from '../src/providers/ThemeProvider';
@@ -22,10 +22,10 @@ const { networkConfig } = createNetworkConfig({
   },
 });
 
-export default function ClientProviders({ 
-  children 
-}: { 
-  children: React.ReactNode 
+export default function ClientProviders({
+  children
+}: {
+  children: React.ReactNode
 }) {
   const queryClient = new QueryClient();
 

@@ -34,18 +34,18 @@ export const UploadDropzone = ({ onFileUpload, onUploadSuccess, onUploadError, d
       {...getRootProps()} 
       className={`
         border-2 border-dashed rounded-lg p-8 text-center cursor-pointer
-        ${isDragActive ? 'border-cyan-500 bg-cyan-900/10' : 'border-gray-600'}
+        ${isDragActive ? 'border-cyan-500 bg-cyan-900/10' : 'border-blue-600'}
         ${isDragReject ? 'border-red-500' : ''}
         ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
       `}
     >
       <input {...getInputProps()} />
-      <Text className="text-gray-300">
+      <Text className="text-blue-300">
         {isDragActive 
           ? 'Drop the file here...' 
           : 'Drag & drop a dataset file here, or click to select'}
       </Text>
-      <Text className="text-gray-500 text-sm mt-2">
+      <Text className="text-blue-500 text-sm mt-2">
         Supported formats: CSV, JSON, TXT, PDF (Max 200MB)
       </Text>
     </Box>
