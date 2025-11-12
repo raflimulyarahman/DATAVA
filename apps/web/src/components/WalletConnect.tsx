@@ -88,12 +88,7 @@ export const WalletConnect = () => {
           </Badge>
         </div>
       ) : (
-        <ConnectButton
-          connectModal={{
-            title: "Connect Your Wallet",
-            description: "Please select a Sui wallet to connect to DATAVA"
-          }}
-        >
+        <ConnectButton>
           <Button
             className="neon-border glow-hover group relative overflow-hidden"
           >
