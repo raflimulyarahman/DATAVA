@@ -32,7 +32,7 @@ export default function ClientProviders({
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <SuiClientProvider networkConfig={networkConfig.testnet}>
+        <SuiClientProvider networks={networkConfig} defaultNetwork="testnet">
           <WalletProvider autoConnect={false}>
             {children}
             <Toaster position="bottom-right" />

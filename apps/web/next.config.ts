@@ -5,4 +5,5 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
 };
 
+// For Turbopack monorepo setup - specifying the root directory
 export default nextConfig;
