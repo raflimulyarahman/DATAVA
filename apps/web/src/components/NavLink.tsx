@@ -2,8 +2,11 @@ import Link, { LinkProps } from 'next/link';
 import { usePathname } from 'next/navigation';
 import { forwardRef } from "react";
 
-interface NavLinkProps extends React.AnchorHTMLAttributes<HTMLAnchorElement>, LinkProps {
+interface NavLinkProps extends LinkProps {
+  children: React.ReactNode;
+  className?: string;
   activeClassName?: string;
+  [key: string]: any;
 }
 
 const NavLink = forwardRef<HTMLAnchorElement, NavLinkProps>(
