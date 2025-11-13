@@ -89,7 +89,7 @@ export const WalletConnect = () => {
           </Badge>
         </div>
       ) : (
-        <ConnectButton>
+        <ConnectButton connectText="Connect Wallet">
           <Button
             className="neon-border glow-hover group relative overflow-hidden"
           >

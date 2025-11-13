@@ -1,3 +1,5 @@
+import React from 'react';
+
 // Simple utility function for merging classes
 const cn = (...classes: (string | boolean | undefined)[]) => {
   return classes.filter(Boolean).join(' ');
