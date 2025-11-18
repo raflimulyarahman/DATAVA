@@ -13,3 +13,4 @@ node_modules
 
 # Arweave
 arweave-keyfile*
+.env
