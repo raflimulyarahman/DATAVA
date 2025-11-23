@@ -20,11 +20,11 @@ export const DashboardHeader = () => {
       </div>
       <div className="flex items-center gap-4">
         <WalletConnect />
-        <Button variant="ghost" size="icon" className="relative">
+        <Button variant="ghost" className="relative w-10 h-10 p-0">
           <Bell className="h-5 w-5" />
           <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-primary animate-pulse" />
         </Button>
-        <Button variant="ghost" size="icon">
+        <Button variant="ghost" className="w-10 h-10 p-0">
           <User className="h-5 w-5" />
         </Button>
       </div>

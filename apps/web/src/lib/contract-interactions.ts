@@ -101,11 +101,12 @@ export const createContributeTx = (
 
   // Wrap moveCall to surface RangeError with additional context
   try {
-    // Serialize the CID and seal hash using BCS as Move `string` bytes.
+    // Serialize all string arguments using BCS as Move `string` bytes.
     // This bypasses the SDK's `pure.string` path which previously hit the
     // BCS ulebEncode error in some environments. We pass the raw serialized
     // bytes into `tx.pure(...)` which avoids the internal string-path.
     const cidBcs = bcsSerializeString(normalizedCid);
+    const licenseBcs = bcsSerializeString(sanitizedLicense as string);
     const sealBcs = bcsSerializeString(sanitizedSealHash as string);
 
     // Detailed per-argument serialization logging to pinpoint where BCS fails
@@ -128,12 +129,12 @@ export const createContributeTx = (
     try {
       // eslint-disable-next-line no-console
       console.debug('createContributeTx: preparing licenseArg', { licenseLen: (sanitizedLicense as string).length });
-      licenseArg = tx.pure.string(sanitizedLicense as string);
+      licenseArg = tx.pure(licenseBcs);
       // eslint-disable-next-line no-console
       console.debug('createContributeTx: licenseArg ok');
     } catch (e) {
       // eslint-disable-next-line no-console
-      console.error('createContributeTx: tx.pure.string(license) failed', { err: e, licensePreview: (sanitizedLicense as string).substring(0, 64) });
+      console.error('createContributeTx: tx.pure(licenseBcs) failed', { err: e, licensePreview: (sanitizedLicense as string).substring(0, 64) });
       throw e;
     }
 

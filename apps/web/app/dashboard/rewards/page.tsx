@@ -9,79 +9,104 @@ import { Badge } from '../../../src/components/ui/badge';
 import { 
   Coins, 
   TrendingUp, 
-  TrendingDown, 
   Wallet, 
-  ExternalLink,
-  Calendar,
-  Database
+  DollarSign,
+  Zap,
+  RefreshCw
 } from 'lucide-react';
-import { format } from 'date-fns';
-
-// Mock data - nanti diganti dengan data dari API blockchain
-const mockRewardsData = [
-  {
-    id: 1,
-    datasetTitle: "Financial Transactions 2024",
-    amount: "0.25 SUI",
-    date: new Date(2024, 10, 15),
-    type: "inference", // inference, access, stake
-    status: "completed" // completed, pending
-  },
-  {
-    id: 2,
-    datasetTitle: "Healthcare Records Sample",
-    amount: "0.18 SUI",
-    date: new Date(2024, 10, 14),
-    type: "access",
-    status: "completed"
-  },
-  {
-    id: 3,
-    datasetTitle: "Social Media Sentiment",
-    amount: "0.32 SUI",
-    date: new Date(2024, 10, 12),
-    type: "inference",
-    status: "completed"
-  },
-  {
-    id: 4,
-    datasetTitle: "IoT Sensor Data",
-    amount: "0.15 SUI",
-    date: new Date(2024, 10, 10),
-    type: "access",
-    status: "pending"
-  }
-];
-
-const mockEarnings = {
-  total: "2.45 SUI",
-  monthly: "1.20 SUI",
-  weekly: "0.55 SUI"
-};
-
-const mockTopPerforming = [
-  { id: 1, title: "Financial Transactions 2024", earnings: "0.85 SUI", accesses: 124 },
-  { id: 2, title: "Healthcare Records Sample", earnings: "0.68 SUI", accesses: 89 },
-  { id: 3, title: "Social Media Sentiment", earnings: "0.45 SUI", accesses: 210 }
-];
+import TransactionFeed from '../../../src/components/TransactionFeed';
+import EarningsChart from '../../../src/components/EarningsChart';
+import ContributorsLeaderboard from '../../../src/components/ContributorsLeaderboard';
+import { 
+  fetchRewardTransactions, 
+  calculateEarnings, 
+  getEarningsChartData,
+  fetchSuiPrice,
+  subscribeToEvents,
+  RewardTransaction
+} from '../../../src/lib/blockchain-events';
+import { toast } from 'react-hot-toast';
 
 export default function RewardsPage() {
   const account = useCurrentAccount();
-  const [rewards, setRewards] = useState<any[]>([]);
+  const [transactions, setTransactions] = useState<RewardTransaction[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState('all'); // all, completed, pending
+  const [suiPrice, setSuiPrice] = useState<number>(0);
+  const [refreshing, setRefreshing] = useState(false);
 
+  const packageId = process.env.NEXT_PUBLIC_PACKAGE_ID || '';
+  
+  // Calculate earnings from transactions
+  const earnings = calculateEarnings(transactions);
+  const chartData = getEarningsChartData(transactions);
+
+  // Fetch initial data
   useEffect(() => {
-    // In real app, fetch from API or blockchain
-    setTimeout(() => {
-      setRewards(mockRewardsData);
-      setLoading(false);
-    }, 800);
-  }, []);
+    const loadData = async () => {
+      if (!packageId) {
+        console.error('Package ID not configured');
+        setLoading(false);
+        return;
+      }
 
-  const filteredRewards = filter === 'all' 
-    ? rewards 
-    : rewards.filter(reward => reward.status === filter);
+      try {
+        setLoading(true);
+        const [txs, price] = await Promise.all([
+          fetchRewardTransactions(packageId, account?.address),
+          fetchSuiPrice()
+        ]);
+        
+        setTransactions(txs);
+        setSuiPrice(price);
+      } catch (error) {
+        console.error('Error loading rewards data:', error);
+        toast.error('Failed to load rewards data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, [packageId, account?.address]);
+
+  // Subscribe to real-time updates
+  useEffect(() => {
+    if (!packageId) return;
+
+    const unsubscribe = subscribeToEvents(
+      packageId,
+      (newTransactions) => {
+        setTransactions(newTransactions);
+      },
+      15000 // Poll every 15 seconds
+    );
+
+    return unsubscribe;
+  }, [packageId]);
+
+  // Manual refresh
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      const [txs, price] = await Promise.all([
+        fetchRewardTransactions(packageId, account?.address),
+        fetchSuiPrice()
+      ]);
+      setTransactions(txs);
+      setSuiPrice(price);
+      toast.success('Data refreshed!');
+    } catch (error) {
+      toast.error('Failed to refresh data');
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  const formatUSD = (suiAmount: string) => {
+    const sui = parseFloat(suiAmount);
+    const usd = sui * suiPrice;
+    return usd > 0 ? `$${usd.toFixed(2)}` : '$0.00';
+  };
 
   if (!account) {
     return (
@@ -119,157 +144,110 @@ export default function RewardsPage() {
       </header>
 
       <main className="p-4 lg:p-6">
-        <div className="space-y-2 mb-6">
-          <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-orange-500">Rewards Dashboard</h1>
-          <p className="text-gray-400">
-            Track your earnings from dataset usage
-          </p>
+        <div className="flex justify-between items-start mb-6">
+          <div className="space-y-2">
+            <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-orange-500">
+              Real-Time Rewards Dashboard
+            </h1>
+            <p className="text-gray-400">
+              Track your earnings from dataset usage on-chain
+            </p>
+          </div>
+          
+          <Button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="bg-gray-800 hover:bg-gray-700 border border-gray-700"
+          >
+            <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid gap-4 md:grid-cols-3 mb-6">
-          <Card className="bg-gray-900/50 p-4 text-center border border-gray-800">
-            <div className="text-2xl text-amber-400 mb-1">💰</div>
-            <h3 className="font-bold text-lg">{mockEarnings.total}</h3>
-            <p className="text-sm text-gray-400">Total Earned</p>
-          </Card>
-          <Card className="bg-gray-900/50 p-4 text-center border border-gray-800">
-            <div className="text-2xl text-green-400 mb-1">📈</div>
-            <h3 className="font-bold text-lg">{mockEarnings.monthly}</h3>
-            <p className="text-sm text-gray-400">Monthly</p>
-          </Card>
-          <Card className="bg-gray-900/50 p-4 text-center border border-gray-800">
-            <div className="text-2xl text-indigo-400 mb-1">📅</div>
-            <h3 className="font-bold text-lg">{mockEarnings.weekly}</h3>
-            <p className="text-sm text-gray-400">Weekly</p>
-          </Card>
-        </div>
-
-        {/* Top Performing Datasets */}
-        <div className="mb-6">
-          <h2 className="text-xl font-bold mb-4 text-amber-400 flex items-center gap-2">
-            <TrendingUp className="w-5 h-5" /> Top Performing Datasets
-          </h2>
-          <div className="grid gap-4 md:grid-cols-3">
-            {mockTopPerforming.map((dataset) => (
-              <Card key={dataset.id} className="bg-gray-900/50 p-4 border border-gray-800">
-                <div className="flex justify-between items-start mb-2">
-                  <h3 className="font-bold flex items-center gap-1">
-                    <Database className="w-4 h-4 text-cyan-400" /> {dataset.title}
-                  </h3>
-                  <Badge variant="secondary" className="bg-amber-900/30 text-amber-400 border-amber-700">
-                    {dataset.accesses} accesses
-                  </Badge>
+        {loading ? (
+          <div className="flex flex-col justify-center items-center h-96 gap-4">
+            <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-amber-500"></div>
+            <p className="text-gray-400">Loading blockchain data...</p>
+          </div>
+        ) : (
+          <>
+            {/* Stats Cards with USD Conversion */}
+            <div className="grid gap-4 md:grid-cols-3 mb-6">
+              <Card className="bg-gradient-to-br from-amber-900/30 to-orange-900/30 p-6 border border-amber-700/50">
+                <div className="flex items-center gap-3 mb-3">
+                  <Wallet className="w-8 h-8 text-amber-400" />
+                  <div>
+                    <p className="text-xs text-gray-400 uppercase tracking-wide">Total Earned</p>
+                    <h3 className="font-bold text-2xl text-amber-400">{earnings.total} SUI</h3>
+                  </div>
                 </div>
-                <div className="text-2xl font-bold text-green-400">{dataset.earnings}</div>
-                <p className="text-sm text-gray-400">Earned to date</p>
+                <div className="flex items-center gap-2 text-sm">
+                  <DollarSign className="w-4 h-4 text-green-400" />
+                  <span className="text-green-400 font-medium">{formatUSD(earnings.total)}</span>
+                </div>
               </Card>
-            ))}
-          </div>
-        </div>
 
-        {/* Rewards History */}
-        <div>
-          <div className="flex flex-wrap justify-between items-center mb-4">
-            <h2 className="text-xl font-bold text-amber-400">Rewards History</h2>
-            <div className="flex flex-wrap gap-2 mt-2 sm:mt-0">
-              <Button
-                variant={filter === 'all' ? 'secondary' : 'ghost'}
-                onClick={() => setFilter('all')}
-                className={filter === 'all' ? 'bg-amber-900/30 border border-amber-700' : 'border border-gray-700'}
-              >
-                All
-              </Button>
-              <Button
-                variant={filter === 'completed' ? 'secondary' : 'ghost'}
-                onClick={() => setFilter('completed')}
-                className={filter === 'completed' ? 'bg-green-900/30 border border-green-700' : 'border border-gray-700'}
-              >
-                Completed
-              </Button>
-              <Button
-                variant={filter === 'pending' ? 'secondary' : 'ghost'}
-                onClick={() => setFilter('pending')}
-                className={filter === 'pending' ? 'bg-yellow-900/30 border border-yellow-700' : 'border border-gray-700'}
-              >
-                Pending
-              </Button>
-            </div>
-          </div>
+              <Card className="bg-gradient-to-br from-green-900/30 to-emerald-900/30 p-6 border border-green-700/50">
+                <div className="flex items-center gap-3 mb-3">
+                  <TrendingUp className="w-8 h-8 text-green-400" />
+                  <div>
+                    <p className="text-xs text-gray-400 uppercase tracking-wide">Monthly</p>
+                    <h3 className="font-bold text-2xl text-green-400">{earnings.monthly} SUI</h3>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <Zap className="w-4 h-4 text-cyan-400" />
+                  <span className="text-cyan-400 font-medium">{formatUSD(earnings.monthly)}</span>
+                </div>
+              </Card>
 
-          {loading ? (
-            <div className="flex justify-center items-center h-64">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-amber-500"></div>
+              <Card className="bg-gradient-to-br from-cyan-900/30 to-blue-900/30 p-6 border border-cyan-700/50">
+                <div className="flex items-center gap-3 mb-3">
+                  <Coins className="w-8 h-8 text-cyan-400" />
+                  <div>
+                    <p className="text-xs text-gray-400 uppercase tracking-wide">Weekly</p>
+                    <h3 className="font-bold text-2xl text-cyan-400">{earnings.weekly} SUI</h3>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <DollarSign className="w-4 h-4 text-amber-400" />
+                  <span className="text-amber-400 font-medium">{formatUSD(earnings.weekly)}</span>
+                </div>
+              </Card>
             </div>
-          ) : filteredRewards.length === 0 ? (
-            <Card className="bg-gray-900/50 p-12 text-center border border-gray-800">
-              <div className="flex justify-center mb-6">
-                <Coins className="w-16 h-16 text-gray-600" />
-              </div>
-              <h3 className="text-xl font-bold mb-2">No rewards yet</h3>
-              <p className="text-gray-400 mb-4">
-                Your rewards will appear here once your datasets are used.
-              </p>
-              <Button className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600">
-                Upload Dataset
-              </Button>
-            </Card>
-          ) : (
-            <div className="overflow-hidden rounded-lg border border-gray-800">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-800/50">
-                  <tr>
-                    <th className="p-3 text-left text-gray-400 font-medium">Dataset</th>
-                    <th className="p-3 text-left text-gray-400 font-medium">Amount</th>
-                    <th className="p-3 text-left text-gray-400 font-medium">Type</th>
-                    <th className="p-3 text-left text-gray-400 font-medium">Date</th>
-                    <th className="p-3 text-left text-gray-400 font-medium">Status</th>
-                    <th className="p-3 text-left text-gray-400 font-medium">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredRewards.map((reward) => (
-                    <tr key={reward.id} className="border-b border-gray-800/50 hover:bg-gray-900/30">
-                      <td className="p-3">
-                        <div className="font-medium">{reward.datasetTitle}</div>
-                      </td>
-                      <td className="p-3">
-                        <div className="font-bold text-green-400">{reward.amount}</div>
-                      </td>
-                      <td className="p-3">
-                        <Badge variant="secondary" className="text-xs">
-                          {reward.type.charAt(0).toUpperCase() + reward.type.slice(1)}
-                        </Badge>
-                      </td>
-                      <td className="p-3">
-                        <div className="flex items-center gap-1 text-gray-400">
-                          <Calendar className="w-4 h-4" />
-                          {format(reward.date, 'MMM dd, yyyy')}
-                        </div>
-                      </td>
-                      <td className="p-3">
-                        <Badge 
-                          className={`text-xs ${
-                            reward.status === 'completed' 
-                              ? 'bg-green-500/20 text-green-400 border-green-500/50' 
-                              : 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50'
-                          }`}
-                        >
-                          {reward.status.charAt(0).toUpperCase() + reward.status.slice(1)}
-                        </Badge>
-                      </td>
-                      <td className="p-3">
-                        <Button size="sm" variant="ghost" className="text-amber-400 hover:text-amber-300">
-                          <ExternalLink className="w-4 h-4" />
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+
+            {/* Earnings Chart */}
+            <div className="mb-6">
+              <EarningsChart data={chartData} type="area" />
             </div>
-          )}
-        </div>
+
+            {/* Two Column Layout: Transaction Feed + Leaderboard */}
+            <div className="grid gap-6 lg:grid-cols-2 mb-6">
+              <TransactionFeed transactions={transactions} limit={10} />
+              <ContributorsLeaderboard 
+                transactions={transactions} 
+                limit={10}
+                currentUserAddress={account?.address}
+              />
+            </div>
+
+            {/* Empty State */}
+            {transactions.length === 0 && (
+              <Card className="bg-gray-900/50 p-12 text-center border border-gray-800">
+                <div className="flex justify-center mb-6">
+                  <Coins className="w-16 h-16 text-gray-600" />
+                </div>
+                <h3 className="text-xl font-bold mb-2">No rewards yet</h3>
+                <p className="text-gray-400 mb-6">
+                  Your rewards will appear here once your datasets are used for AI inference.
+                </p>
+                <Button className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600">
+                  Upload Your First Dataset
+                </Button>
+              </Card>
+            )}
+          </>
+        )}
       </main>
     </div>
   );
