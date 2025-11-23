@@ -96,3 +96,49 @@ Setelah redeploy, cek:
 Jika masih menampilkan login page, berarti:
 - Root directory belum di-set ke `apps/web`
 - Atau project masih dalam mode "Private" (perlu permission)
+
+## Environment Variables Update (PENTING!)
+
+Untuk fix error "ERR_BLOCKED_BY_CLIENT" di Vercel, update environment variables:
+
+### Option 1: Direct Walrus Aggregator (Recommended untuk testing)
+```env
+NEXT_PUBLIC_PACKAGE_ID=0x986febba40134633f8e3ba7b79fff66792e868274516f03c5d6b75da169091bd
+NEXT_PUBLIC_POOL_ID=0x8679e33657185a5c97daac9f5b8e93cf4c00182ee91d1318a1e5851f61033c2b
+NEXT_PUBLIC_WALRUS_RELAY=https://aggregator.walrus-testnet.walrus.space
+```
+
+**Catatan:** Dengan setup ini:
+- ✅ File upload akan bekerja di production (langsung ke Walrus)
+- ⚠️ AI Inference perlu deploy service terpisah
+
+### Option 2: Deploy Backend Services ke Vercel (Full features)
+
+1. Deploy ingestion service:
+```bash
+cd services/ingestion
+vercel --prod
+# Copy URL hasil deploy: https://datava-ingestion.vercel.app
+```
+
+2. Deploy inference service:
+```bash
+cd services/inference
+vercel --prod
+# Copy URL hasil deploy: https://datava-inference.vercel.app
+```
+
+3. Set environment variables di Vercel:
+```env
+NEXT_PUBLIC_WALRUS_RELAY=https://datava-ingestion.vercel.app
+NEXT_PUBLIC_INFERENCE_URL=https://datava-inference.vercel.app
+```
+
+## Automatic Environment Detection
+
+Aplikasi sekarang otomatis detect environment:
+- **localhost**: Gunakan http://localhost:5051 dan http://localhost:5052
+- **production** (tanpa env vars): Fallback ke Walrus aggregator
+- **production** (dengan env vars): Gunakan deployed services
+
+Tidak perlu konfigurasi tambahan untuk development!
