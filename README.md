@@ -1,26 +1,26 @@
 # DATAVA - Decentralized AI Data Marketplace
 
-🚀 **DATAVA** is a decentralized AI data marketplace that enables users to upload datasets to decentralized storage (Walrus), register them on Sui blockchain, run GPT-4.1 inference, and earn rewards through on-chain usage tracking.
+🚀 **DATAVA** is a decentralized AI data marketplace that enables users to upload datasets to decentralized storage (Walrus), register them on Sui blockchain, run GPT-4o inference, and earn rewards through on-chain usage tracking.
 
 ## ✨ Features
 
 - 📤 Upload datasets to decentralized storage (Walrus)
 - 🔗 Register dataset ownership on Sui blockchain
-- 🤖 Run GPT-4.1 inference via AI backend
+- 🤖 Run GPT-4o inference via AI backend
 - 💰 Earn rewards through on-chain usage tracking
 - 🎨 Beautiful neon-themed UI with glass morphism
 
 ## 🛠 Tech Stack
 
 ### Frontend
-- Next.js 14 (App Router) with React 18
+- Next.js 16 (App Router) with React 19
 - Tailwind CSS with neon gradient theme
 - @mysten/dapp-kit for Sui wallet integration
 - Glass morphism cards, dark background, cyan/pink accents
 
 ### Backend Services
 - **Ingestion Service**: Express.js for handling file uploads to Walrus relay
-- **Inference Service**: Express.js for OpenAI GPT-4.1 API integration
+- **Inference Service**: Express.js for OpenAI GPT-4o API integration
 - CORS enabled, proper error handling, environment variables
 
 ### Blockchain
@@ -35,9 +35,10 @@
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Node.js v20+ 
+- Node.js v20+
 - pnpm installed (`npm install -g pnpm`)
-- Sui CLI (optional, for contract deployment)
+- Sui CLI (for contract deployment)
+- OpenAI API key (for inference)
 
 ### Installation
 
@@ -52,50 +53,37 @@ cd DATAVA
 pnpm install
 ```
 
-3. Create environment files:
-
-**Frontend (.env.local in apps/web):**
-```env
-NEXT_PUBLIC_PACKAGE_ID=REPLACE_WITH_PACKAGE_ID
-NEXT_PUBLIC_POOL_ID=REPLACE_WITH_POOL_ID
-NEXT_PUBLIC_WALRUS_RELAY=http://localhost:5051
-NEXT_PUBLIC_INFERENCE_URL=http://localhost:5052
+3. Run the setup script:
+```bash
+./scripts/setup.sh
 ```
 
-**Ingestion Service (.env in services/ingestion):**
-```env
-WALRUS_RELAY=https://upload-relay.testnet.walrus.space
-PORT=5051
+4. Deploy the smart contracts:
+```bash
+./scripts/deploy-contracts.sh
 ```
 
-**Inference Service (.env in services/inference):**
-```env
-OPENAI_API_KEY=sk-your-api-key-here
-PORT=5052
-SYSTEM_PROMPT=You are DATAVA cooperative model. Answer concisely.
-MODEL=gpt-4
+5. Update environment files with your API keys:
+   - Update `services/inference/.env` with your OpenAI API key
+   - Update other environment variables as needed
+
+## 🚀 Development
+
+### Starting the Development Server
+
+1. Ensure you have an OpenAI API key:
+   - Go to https://platform.openai.com/api-keys
+   - Create an API key and save it temporarily
+
+2. Update your inference service environment:
+```bash
+# Edit services/inference/.env
+OPENAI_API_KEY=your_actual_openai_api_key_here
 ```
 
-4. Start all services with one command:
+3. Start all services:
 ```bash
 ./scripts/dev.sh
-```
-
-Alternatively, start services individually:
-
-Terminal 1 - Ingestion Service:
-```bash
-cd services/ingestion && pnpm dev
-```
-
-Terminal 2 - Inference Service:
-```bash
-cd services/inference && pnpm dev
-```
-
-Terminal 3 - Frontend:
-```bash
-cd apps/web && pnpm dev
 ```
 
 Your DATAVA marketplace will be available at `http://localhost:3000`
@@ -105,7 +93,7 @@ Your DATAVA marketplace will be available at `http://localhost:3000`
 ```
 DATAVA/
 ├── apps/
-│   └── web/                    # Next.js 14 frontend (Neon UI)
+│   └── web/                    # Next.js 16 frontend (Neon UI)
 ├── services/
 │   ├── ingestion/              # Walrus upload service
 │   └── inference/              # OpenAI inference service
@@ -113,7 +101,9 @@ DATAVA/
 ├── packages/
 │   └── sdk/                    # TypeScript SDK for contracts
 └── scripts/
-    └── dev.sh                  # One-click dev startup
+    ├── dev.sh                  # One-click dev startup
+    ├── deploy-contracts.sh     # Deploy smart contracts
+    └── setup.sh                # Environment setup script
 ```
 
 ## 🎯 Core Workflows
@@ -130,7 +120,7 @@ DATAVA/
 - Emit `EContributed` events
 
 ### 3. AI Inference & Usage Tracking
-- Input Prompt → GPT-4.1 Inference
+- Input Prompt → GPT-4o Inference
 - Display Output
 - Sign `record_usage()` transaction
 - Emit `EUsageRecorded` events
@@ -150,11 +140,11 @@ DATAVA/
 
 ### `datava::core` Module
 - `create_pool()` - Initialize a new data pool
-- `contribute(pool, blob_cid, license, size, weight)` - Register dataset
+- `contribute(pool, blob_cid, license, size, weight, seal_hash, truth_score)` - Register dataset
 - `publish_model(pool, name, description)` - Publish AI model
 - `record_usage(pool, version, tokens, fee)` - Track usage for rewards
 
-## 🚀 Deployment
+## 🚀 Production Deployment
 
 ### Environment Configuration
 Set appropriate environment variables for your deployment target.
@@ -163,6 +153,17 @@ Set appropriate environment variables for your deployment target.
 ```bash
 cd apps/web
 pnpm build
+pnpm start
+```
+
+### Backend Services
+```bash
+# Ingestion service
+cd services/ingestion
+pnpm start
+
+# Inference service
+cd services/inference
 pnpm start
 ```
 
@@ -212,6 +213,7 @@ cd services/inference && pnpm test
 - Implement file size validation
 - Add rate limiting on inference endpoints
 - Sanitize user inputs
+- Validate transaction parameters before sending to blockchain
 
 ## 🤝 Contributing
 
@@ -228,10 +230,10 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## ⚠️ Notes
 
-- For production use, replace the mock implementations with real API calls
 - Ensure proper gas handling for Sui transactions
-- The GPT-4.1 model should be available through your OpenAI account
+- The GPT-4o model is used for inference (you can change this in the environment)
 - Testnet Sui addresses will need to be updated for mainnet deployment
+- For production, proper error handling and monitoring should be implemented
 
 ---
 

@@ -9,7 +9,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-black text-white">
       {/* Header */}
-      <header className="sticky top-0 z-10 flex h-16 items-center justify-between gap-4 border-b border-gray-800 px-4 lg:px-6">
+      <header className="z-10 flex h-16 items-center justify-between gap-4 border-b border-gray-800 px-4 lg:px-6">
         <div className="flex items-center gap-2">
           <h1 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-pink-500">DATAVA</h1>
         </div>

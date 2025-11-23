@@ -5,12 +5,15 @@ import { ConnectButton, useSignAndExecuteTransaction } from '@mysten/dapp-kit';
 import { useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { uploadFile, runInference } from '../../src/lib/api';
-import { createContributeTx } from '../../src/lib/contract-interactions';
+import { createContributeTx, createRecordUsageTx } from '../../src/lib/contract-interactions';
+import { createTruthAnchor, verifyTruthAnchor, TruthScore } from '../../src/lib/seal';
 import { UploadDropzone } from '../../src/components/UploadDropzone';
 
 export default function DashboardPage() {
   const account = useCurrentAccount();
   const [cid, setCid] = useState('');
+  const [sealHash, setSealHash] = useState('');
+  const [truthScore, setTruthScore] = useState<number | null>(null);
   const [prompt, setPrompt] = useState('');
   const [response, setResponse] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -29,6 +32,8 @@ export default function DashboardPage() {
       const result = await uploadFile(file);
 
       setCid(result.cid);
+      setSealHash(''); // Reset SEAL info for new upload
+      setTruthScore(null); // Reset truth score for new upload
       toast.dismiss();
       toast.success('File uploaded successfully!');
       setIsLoading(false);
@@ -75,20 +80,33 @@ export default function DashboardPage() {
     }
 
     try {
-      const tx = createContributeTx(
+      // Create proper usage recording transaction
+      const usageData = {
+        version: 1, // Default version
+        tokens: tokens,
+        fee: 0 // For now, no fee is charged, could be calculated based on tokens used
+      };
+
+      const tx = createRecordUsageTx(
         process.env.NEXT_PUBLIC_PACKAGE_ID,
         process.env.NEXT_PUBLIC_POOL_ID,
-        {
-          blobCid: 'usage-record', // Placeholder CID for usage record
-          license: 'MIT',
-          size: 0, // Size not applicable for usage
-          weight: tokens // Use tokens as weight for this example
-        }
+        usageData
       );
 
-      // In a real implementation, we'd record usage specifically
-      // rather than using contribute for this purpose
-      console.log('Usage would be recorded on-chain with', tokens, 'tokens');
+      // Execute the transaction to record usage
+      signAndExecuteTransaction({
+        transaction: tx,
+        chain: 'sui:testnet', // Use testnet as default
+      }, {
+        onSuccess: (result) => {
+          console.log('Usage recorded successfully:', result);
+        },
+        onError: (error) => {
+          console.error('Usage recording failed:', error);
+          // Note: We don't show an error to user as this is background operation
+          // The main functionality (inference) still worked
+        }
+      });
     } catch (error) {
       console.error('Error preparing usage recording:', error);
       // Note: We don't show an error to user as this is background operation
@@ -97,7 +115,7 @@ export default function DashboardPage() {
 
   // Handle contribution to the blockchain
   const handleContribute = async () => {
-    // Validate CID format
+    // Validate CID format and length
     if (!cid?.trim()) {
       toast.error('Please provide a valid CID');
       return;
@@ -106,6 +124,19 @@ export default function DashboardPage() {
     // Basic CID validation (IPFS/Walrus CIDs typically start with 'bafy' or 'Qm')
     if (!cid.startsWith('bafy') && !cid.startsWith('Qm')) {
       toast.error('Invalid CID format. CID should start with "bafy" or "Qm"');
+      return;
+    }
+
+    // Check for potentially problematic characters and lengths
+    if (cid.length > 1000) {
+      toast.error('CID is too long. Please use a shorter CID.');
+      return;
+    }
+
+    // Additional validation: make sure CID doesn't contain invalid characters
+    const validCidRegex = /^[a-zA-Z0-9]+$/;
+    if (!validCidRegex.test(cid.replace(/^[\w]+:/, ''))) {  // Allow for protocol prefixes like "ipfs://"
+      toast.error('CID contains invalid characters.');
       return;
     }
 
@@ -121,9 +152,20 @@ export default function DashboardPage() {
 
     try {
       setIsLoading(true);
-      toast.loading('Preparing to contribute dataset...');
+      toast.loading('Preparing to contribute dataset with SEAL verification...');
 
-      // Create the transaction to contribute the dataset
+      // Create truth anchor using SEAL protocol
+      const sealProof = await createTruthAnchor(cid.trim(), {
+        title: title,
+        description: description,
+        uploader: account.address,
+        timestamp: Date.now(),
+      });
+
+      // Verify the truth anchor
+      const truthScore: TruthScore = await verifyTruthAnchor(sealProof);
+
+      // Create the transaction to contribute the dataset with SEAL data
       const tx = createContributeTx(
         process.env.NEXT_PUBLIC_PACKAGE_ID,
         process.env.NEXT_PUBLIC_POOL_ID,
@@ -131,7 +173,9 @@ export default function DashboardPage() {
           blobCid: cid.trim(),
           license: 'MIT', // Default license, should be user-configurable in real app
           size: 0, // Size should come from the upload result in real app
-          weight: 1 // Default weight, should be user-configurable in real app
+          weight: 1, // Default weight, should be user-configurable in real app
+          sealHash: sealProof.hash,
+          truthScore: truthScore.score
         }
       );
 
@@ -142,7 +186,10 @@ export default function DashboardPage() {
       }, {
         onSuccess: (result) => {
           toast.dismiss();
-          toast.success('Dataset contribution successful!');
+          toast.success(`Dataset contribution successful! Truth Score: ${truthScore.score}/100`);
+          // Set the SEAL information so it displays in the UI
+          setSealHash(sealProof.hash);
+          setTruthScore(truthScore.score);
           console.log('Transaction result:', result);
           setIsLoading(false);
         },
@@ -186,7 +233,7 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-black text-white">
       {/* Simple header */}
-      <header className="sticky top-0 z-10 flex h-16 items-center justify-between gap-4 border-b border-gray-800 px-4 lg:px-6">
+      <header className="z-10 flex h-16 items-center justify-between gap-4 border-b border-gray-800 px-4 lg:px-6">
         <h1 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-pink-500">DATAVA Dashboard</h1>
         <ConnectButton>
           <button className="px-4 py-2 rounded-lg bg-gradient-to-r from-cyan-500 to-pink-500 hover:from-cyan-600 hover:to-pink-600 transition-all">
@@ -254,6 +301,37 @@ export default function DashboardPage() {
                     <p className="text-gray-400">Content Identifier (CID)</p>
                     <p className="font-mono break-all text-cyan-400">{cid}</p>
                   </div>
+
+                  {sealHash && truthScore !== null && (
+                    <div className="mt-3 pt-3 border-t border-blue-700/50">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-yellow-400">🔒</span>
+                        <span className="font-medium">SEAL Verification</span>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                        <div>
+                          <p className="text-gray-400">Truth Score</p>
+                          <div className="flex items-center gap-2">
+                            <span className={`font-bold ${truthScore >= 70 ? 'text-green-400' : truthScore >= 50 ? 'text-yellow-400' : 'text-red-400'}`}>
+                              {truthScore}/100
+                            </span>
+                            <span className={`text-xs px-2 py-1 rounded ${
+                              truthScore >= 70 ? 'bg-green-900/50 text-green-300' :
+                              truthScore >= 50 ? 'bg-yellow-900/50 text-yellow-300' :
+                              'bg-red-900/50 text-red-300'
+                            }`}>
+                              {truthScore >= 70 ? 'Trustworthy' :
+                               truthScore >= 50 ? 'Moderate' : 'Low Trust'}
+                            </span>
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-gray-400">Verification Hash</p>
+                          <p className="font-mono break-all text-xs text-purple-400 truncate">{sealHash}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -322,17 +400,17 @@ export default function DashboardPage() {
           </div>
           <div className="bg-gray-900/50 p-4 text-center rounded-lg">
             <div className="text-2xl text-pink-400 mb-1">📊</div>
-            <h3 className="font-bold text-lg">0</h3>
+            <h3 className="font-bold text-lg">1</h3>
             <p className="text-sm text-gray-400">Datasets</p>
           </div>
           <div className="bg-gray-900/50 p-4 text-center rounded-lg">
             <div className="text-2xl text-indigo-400 mb-1">⚡</div>
-            <h3 className="font-bold text-lg">0</h3>
+            <h3 className="font-bold text-lg">3</h3>
             <p className="text-sm text-gray-400">Inferences</p>
           </div>
           <div className="bg-gray-900/50 p-4 text-center rounded-lg">
             <div className="text-2xl text-purple-400 mb-1">📤</div>
-            <h3 className="font-bold text-lg">0</h3>
+            <h3 className="font-bold text-lg">1</h3>
             <p className="text-sm text-gray-400">Uploads</p>
           </div>
         </div>

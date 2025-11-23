@@ -32,6 +32,10 @@ module datava::core {
         contributed_at: u64,
         /// Address of the contributor
         contributor: address,
+        /// SEAL verification hash for authenticity
+        seal_hash: String,
+        /// Truth score (0-100) for dataset authenticity
+        truth_score: u8,
     }
 
     /// Model artifact representing an AI model built with contributions
@@ -61,6 +65,10 @@ module datava::core {
         pool_id: ID,
         /// Transaction timestamp
         timestamp: u64,
+        /// SEAL verification hash
+        seal_hash: String,
+        /// Truth score
+        truth_score: u8,
     }
 
     /// Event for when usage is recorded
@@ -79,6 +87,20 @@ module datava::core {
         timestamp: u64,
     }
 
+    /// Event for when a dataset is verified using SEAL
+    public struct EDatasetVerified has copy, drop {
+        /// ID of the contribution
+        contribution_id: ID,
+        /// Seal verification hash
+        seal_hash: String,
+        /// New truth score
+        truth_score: u8,
+        /// Address of the verifier
+        verifier: address,
+        /// Timestamp
+        timestamp: u64,
+    }
+
     /// Initialize a new pool for the marketplace
     public fun init_pool(ctx: &mut TxContext) {
         let pool = Pool {
@@ -87,7 +109,7 @@ module datava::core {
             total_usage: 0,
             created_at: 0, // Initialize to 0 since we can't get timestamp in init
         };
-        
+
         transfer::transfer(pool, ctx.sender());
     }
 
@@ -96,13 +118,15 @@ module datava::core {
         init_pool(ctx);
     }
 
-    /// Contribute a dataset to the pool
+    /// Contribute a dataset to the pool with Walrus storage reference and SEAL verification
     public fun contribute(
         pool: &mut Pool,
         blob_cid: String,
         license: String,
         size: u64,
         weight: u64,
+        seal_hash: String,
+        truth_score: u8,
         ctx: &mut TxContext
     ) {
         let contribution = Contribution {
@@ -113,6 +137,8 @@ module datava::core {
             weight,
             contributed_at: ctx.epoch(),
             contributor: ctx.sender(),
+            seal_hash,
+            truth_score,
         };
 
         // Update pool statistics
@@ -125,6 +151,8 @@ module datava::core {
             contributor: ctx.sender(),
             pool_id: object::id(pool),
             timestamp: ctx.epoch(),
+            seal_hash: copy contribution.seal_hash,
+            truth_score: contribution.truth_score,
         });
 
         // Transfer the contribution object to the sender (contributor)
@@ -173,6 +201,28 @@ module datava::core {
         });
     }
 
+    /// Update the truth score of a contribution using SEAL verification
+    public fun verify_contribution(
+        contribution: &mut Contribution,
+        new_seal_hash: String,
+        new_truth_score: u8,
+        _pool: &mut Pool,  // Renamed with underscore to indicate it's unused - needed for proper object borrowing
+        ctx: &mut TxContext
+    ) {
+        // Update the contribution with new verification data
+        contribution.seal_hash = new_seal_hash;
+        contribution.truth_score = new_truth_score;
+
+        // Emit verification event
+        event::emit(EDatasetVerified {
+            contribution_id: object::id(contribution),
+            seal_hash: copy contribution.seal_hash,
+            truth_score: contribution.truth_score,
+            verifier: ctx.sender(),
+            timestamp: ctx.epoch(),
+        });
+    }
+
     /// Get the total number of contributions in the pool
     public fun get_total_contributions(pool: &Pool): u64 {
         pool.total_contributions
@@ -181,5 +231,15 @@ module datava::core {
     /// Get the total usage recorded in the pool
     public fun get_total_usage(pool: &Pool): u64 {
         pool.total_usage
+    }
+
+    /// Get the truth score of a contribution
+    public fun get_truth_score(contribution: &Contribution): u8 {
+        contribution.truth_score
+    }
+
+    /// Get the seal hash of a contribution
+    public fun get_seal_hash(contribution: &Contribution): String {
+        copy contribution.seal_hash
     }
 }

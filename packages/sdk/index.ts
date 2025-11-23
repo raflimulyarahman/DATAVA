@@ -13,9 +13,9 @@ export class DatavaSDK {
   /**
    * Creates a transaction to contribute a dataset to the pool
    */
-  contributeTx(blobCid: string, license: string, size: number, weight: number) {
+  contributeTx(blobCid: string, license: string, size: number, weight: number, sealHash: string, truthScore: number) {
     const tx = new Transaction();
-    
+
     tx.moveCall({
       target: `${this.packageId}::core::contribute`,
       arguments: [
@@ -24,6 +24,8 @@ export class DatavaSDK {
         tx.pure.string(license),
         tx.pure.u64(size),
         tx.pure.u64(weight),
+        tx.pure.string(sealHash),
+        tx.pure.u8(truthScore),
       ],
     });
 
@@ -72,9 +74,28 @@ export class DatavaSDK {
    */
   createPoolTx() {
     const tx = new Transaction();
-    
+
     tx.moveCall({
       target: `${this.packageId}::core::create_pool`,
+    });
+
+    return tx;
+  }
+
+  /**
+   * Creates a transaction to verify a contribution using SEAL
+   */
+  verifyContributionTx(contributionId: string, newSealHash: string, newTruthScore: number) {
+    const tx = new Transaction();
+
+    tx.moveCall({
+      target: `${this.packageId}::core::verify_contribution`,
+      arguments: [
+        tx.object(contributionId),
+        tx.pure.string(newSealHash),
+        tx.pure.u8(newTruthScore),
+        tx.object(this.poolId),  // mutable reference to the pool object
+      ],
     });
 
     return tx;
